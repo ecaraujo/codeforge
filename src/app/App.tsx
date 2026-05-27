@@ -5,6 +5,7 @@ import {
   LogOut, ChevronRight, Plus, RefreshCw, GitBranch, Play,
   Pause, Database, Package, Globe, BookOpen, Lock, Filter,
   Check, Menu, BarChart2, AlertCircle, CheckCircle,
+  Building2, ArrowLeft, Trash2,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -15,11 +16,21 @@ type Repository = {
   language: string; languageColor: string; stars: number; forks: number;
   lastCommit: string; provider: "github" | "azuredevops" | "gitlab" | "bitbucket";
   isPrivate: boolean; selected: boolean; branch: string; openIssues: number;
+  organization: string; connectionId: string;
 };
 type Agent = { id: string; name: string; model: string; provider: string; description: string; enabled: boolean; color: string };
 type Prompt = { id: string; name: string; category: string; content: string; enabled: boolean; tags: string[] };
 type ApiKey = { id: string; provider: string; color: string; key: string; orgId: string; connected: boolean };
-type Connection = { id: string; name: string; type: string; color: string; connected: boolean };
+type ConnectionType = "github" | "azuredevops" | "gitlab" | "bitbucket";
+type Connection = {
+  id: string;
+  label: string;        // user-defined nickname (e.g. "Acme Corp GitHub")
+  type: ConnectionType;
+  organization: string; // org / workspace / account
+  baseUrl?: string;     // for self-hosted or azure devops
+  token: string;
+  connected: boolean;
+};
 
 // ─── Seed data ───────────────────────────────────────────────────────────────
 
@@ -29,48 +40,70 @@ const SEED_REPOS: Repository[] = [
     description: "React analytics dashboard with real-time data visualization and customizable widgets",
     language: "TypeScript", languageColor: "#3178c6", stars: 847, forks: 124,
     lastCommit: "2 hours ago", provider: "github", isPrivate: false, selected: false, branch: "main", openIssues: 12,
+    organization: "acme-corp", connectionId: "conn-gh-acme",
   },
   {
     id: "2", name: "ml-pipeline", fullName: "acme-corp/ml-pipeline",
     description: "Distributed ML training pipeline with PyTorch and TensorFlow support, Kubernetes orchestration",
     language: "Python", languageColor: "#3572A5", stars: 2341, forks: 389,
     lastCommit: "5 hours ago", provider: "github", isPrivate: false, selected: false, branch: "main", openIssues: 28,
+    organization: "acme-corp", connectionId: "conn-gh-acme",
   },
   {
-    id: "3", name: "api-gateway", fullName: "acme-corp/api-gateway",
+    id: "3", name: "api-gateway", fullName: "acme-labs/api-gateway",
     description: "High-performance API gateway with rate limiting, auth middleware and OpenAPI spec generation",
     language: "Go", languageColor: "#00ADD8", stars: 412, forks: 67,
     lastCommit: "1 day ago", provider: "github", isPrivate: true, selected: false, branch: "develop", openIssues: 5,
+    organization: "acme-labs", connectionId: "conn-gh-labs",
   },
   {
-    id: "4", name: "AzureFunctions.Core", fullName: "acme-corp/AzureFunctions.Core",
+    id: "4", name: "AzureFunctions.Core", fullName: "AcmeEnterprise/AzureFunctions.Core",
     description: "Azure Functions serverless library with dependency injection, typed configuration and telemetry",
     language: "C#", languageColor: "#239120", stars: 0, forks: 0,
     lastCommit: "3 days ago", provider: "azuredevops", isPrivate: true, selected: false, branch: "main", openIssues: 7,
+    organization: "AcmeEnterprise", connectionId: "conn-ado-enterprise",
   },
   {
-    id: "5", name: "data-processor", fullName: "acme-corp/data-processor",
+    id: "5", name: "data-processor", fullName: "AcmeEnterprise/data-processor",
     description: "ETL pipeline for processing and transforming large datasets with Apache Spark integration",
     language: "Python", languageColor: "#3572A5", stars: 0, forks: 0,
     lastCommit: "1 week ago", provider: "azuredevops", isPrivate: true, selected: false, branch: "release/2.4", openIssues: 3,
+    organization: "AcmeEnterprise", connectionId: "conn-ado-enterprise",
   },
   {
     id: "6", name: "mobile-app", fullName: "acme-corp/mobile-app",
     description: "Cross-platform React Native app with offline-first architecture and push notifications",
     language: "TypeScript", languageColor: "#3178c6", stars: 156, forks: 23,
     lastCommit: "6 hours ago", provider: "github", isPrivate: true, selected: false, branch: "main", openIssues: 19,
+    organization: "acme-corp", connectionId: "conn-gh-acme",
   },
   {
-    id: "7", name: "infra-terraform", fullName: "acme-corp/infra-terraform",
+    id: "7", name: "infra-terraform", fullName: "acme-platform/infra-terraform",
     description: "Infrastructure as code for multi-region AWS deployments with DR failover and auto-scaling",
     language: "HCL", languageColor: "#7b42bc", stars: 0, forks: 0,
     lastCommit: "4 hours ago", provider: "gitlab", isPrivate: true, selected: false, branch: "main", openIssues: 2,
+    organization: "acme-platform", connectionId: "conn-gl-platform",
   },
   {
-    id: "8", name: "auth-service", fullName: "acme-corp/auth-service",
+    id: "8", name: "auth-service", fullName: "acme-labs/auth-service",
     description: "OAuth 2.0 / OIDC identity provider with PKCE support, MFA, and session management",
     language: "Rust", languageColor: "#dea584", stars: 231, forks: 41,
     lastCommit: "12 hours ago", provider: "github", isPrivate: true, selected: false, branch: "main", openIssues: 8,
+    organization: "acme-labs", connectionId: "conn-gh-labs",
+  },
+  {
+    id: "9", name: "AcmePortal.Web", fullName: "AcmeInternal/AcmePortal.Web",
+    description: "Internal employee portal with SSO, time tracking and document management",
+    language: "C#", languageColor: "#239120", stars: 0, forks: 0,
+    lastCommit: "2 days ago", provider: "azuredevops", isPrivate: true, selected: false, branch: "main", openIssues: 14,
+    organization: "AcmeInternal", connectionId: "conn-ado-internal",
+  },
+  {
+    id: "10", name: "billing-engine", fullName: "acme-platform/billing-engine",
+    description: "Subscription billing, invoicing and revenue recognition microservice",
+    language: "Go", languageColor: "#00ADD8", stars: 0, forks: 0,
+    lastCommit: "9 hours ago", provider: "gitlab", isPrivate: true, selected: false, branch: "main", openIssues: 11,
+    organization: "acme-platform", connectionId: "conn-gl-platform",
   },
 ];
 
@@ -99,11 +132,19 @@ const SEED_API_KEYS: ApiKey[] = [
 ];
 
 const SEED_CONNECTIONS: Connection[] = [
-  { id: "github", name: "GitHub", type: "github", color: "#e6edf3", connected: false },
-  { id: "azuredevops", name: "Azure DevOps", type: "azuredevops", color: "#0078d4", connected: false },
-  { id: "gitlab", name: "GitLab", type: "gitlab", color: "#fc6d26", connected: false },
-  { id: "bitbucket", name: "Bitbucket", type: "bitbucket", color: "#0052cc", connected: false },
+  { id: "conn-gh-acme", label: "Acme Corp", type: "github", organization: "acme-corp", token: "ghp_••••••••••••acme", connected: true },
+  { id: "conn-gh-labs", label: "Acme Labs", type: "github", organization: "acme-labs", token: "ghp_••••••••••••labs", connected: true },
+  { id: "conn-ado-enterprise", label: "Acme Enterprise", type: "azuredevops", organization: "AcmeEnterprise", baseUrl: "https://dev.azure.com/AcmeEnterprise", token: "pat_••••••••ent", connected: true },
+  { id: "conn-ado-internal", label: "Acme Internal", type: "azuredevops", organization: "AcmeInternal", baseUrl: "https://dev.azure.com/AcmeInternal", token: "pat_••••••••int", connected: true },
+  { id: "conn-gl-platform", label: "Acme Platform", type: "gitlab", organization: "acme-platform", token: "glpat_••••••••pf", connected: true },
 ];
+
+const CONNECTION_TYPE_META: Record<ConnectionType, { name: string; color: string; orgLabel: string; needsBaseUrl: boolean }> = {
+  github:     { name: "GitHub",       color: "#e6edf3", orgLabel: "Organization", needsBaseUrl: false },
+  azuredevops:{ name: "Azure DevOps", color: "#0078d4", orgLabel: "Organization", needsBaseUrl: true  },
+  gitlab:     { name: "GitLab",       color: "#fc6d26", orgLabel: "Group",        needsBaseUrl: false },
+  bitbucket:  { name: "Bitbucket",    color: "#0052cc", orgLabel: "Workspace",    needsBaseUrl: false },
+};
 
 const HISTORY_ITEMS = [
   { id: "h1", repo: "frontend-dashboard", status: "completed", agents: 3, issues: 14, duration: "4m 12s", date: "Today, 09:41 AM" },
@@ -394,20 +435,64 @@ function RepoCard({ repo, onToggle }: { repo: Repository; onToggle: (id: string)
 
 // ─── Repositories View ────────────────────────────────────────────────────────
 
+function OrgCard({
+  org, repoCount, selectedCount, provider, onOpen,
+}: {
+  org: string; repoCount: number; selectedCount: number;
+  provider: Repository["provider"]; onOpen: () => void;
+}) {
+  return (
+    <button
+      onClick={onOpen}
+      className="text-left rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:bg-card/80 p-5 transition-all duration-200 group"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl border border-white/8 flex items-center justify-center flex-shrink-0" style={{ background: "rgba(99,102,241,0.10)" }}>
+            <Building2 size={17} className="text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{org}</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+              <ProviderIcon type={provider} size={11} />
+              {CONNECTION_TYPE_META[provider].name}
+            </p>
+          </div>
+        </div>
+        <ChevronRight size={15} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+      </div>
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <GitBranch size={11} />
+          {repoCount} repo{repoCount !== 1 ? "s" : ""}
+        </span>
+        {selectedCount > 0 && (
+          <span className="flex items-center gap-1.5 text-primary font-medium">
+            <Check size={11} />
+            {selectedCount} selected
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 function RepositoriesView({
-  repos, setRepos, searchQuery, onAnalyze,
+  repos, setRepos, searchQuery, onAnalyze, connections,
 }: {
   repos: Repository[]; setRepos: (r: Repository[]) => void;
   searchQuery: string; onAnalyze: () => void;
+  connections: Connection[];
 }) {
   const [filterProvider, setFilterProvider] = useState("all");
   const [filterLanguage, setFilterLanguage] = useState("all");
+  const [activeOrg, setActiveOrg] = useState<string | null>(null);
 
   const toggle = (id: string) => setRepos(repos.map(r => r.id === id ? { ...r, selected: !r.selected } : r));
 
+  const q = searchQuery.toLowerCase();
   const filtered = repos.filter(r => {
-    const q = searchQuery.toLowerCase();
-    const matchQ = !q || r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
+    const matchQ = !q || r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q) || r.organization.toLowerCase().includes(q);
     const matchP = filterProvider === "all" || r.provider === filterProvider;
     const matchL = filterLanguage === "all" || r.language === filterLanguage;
     return matchQ && matchP && matchL;
@@ -416,16 +501,50 @@ function RepositoriesView({
   const selected = repos.filter(r => r.selected).length;
   const languages = [...new Set(repos.map(r => r.language))];
 
+  // Group by organization
+  const orgMap = new Map<string, { provider: Repository["provider"]; repos: Repository[] }>();
+  for (const r of filtered) {
+    const existing = orgMap.get(r.organization);
+    if (existing) existing.repos.push(r);
+    else orgMap.set(r.organization, { provider: r.provider, repos: [r] });
+  }
+  const orgEntries = [...orgMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+
+  const inOrgView = activeOrg !== null;
+  const activeOrgRepos = inOrgView ? (orgMap.get(activeOrg!)?.repos ?? []) : [];
+
   return (
     <div>
       <div className="flex items-start justify-between mb-6 gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-foreground mb-0.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Repositories
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            {repos.length} repositories · {selected} selected for analysis
-          </p>
+        <div className="min-w-0">
+          {inOrgView ? (
+            <>
+              <button
+                onClick={() => setActiveOrg(null)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
+              >
+                <ArrowLeft size={12} /> Organizations
+                <ChevronRight size={11} className="opacity-50" />
+                <span className="text-foreground font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{activeOrg}</span>
+              </button>
+              <h2 className="text-base font-semibold text-foreground mb-0.5 flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <Building2 size={15} className="text-primary" />
+                <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{activeOrg}</span>
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {activeOrgRepos.length} repositor{activeOrgRepos.length !== 1 ? "ies" : "y"} · {activeOrgRepos.filter(r => r.selected).length} selected
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-base font-semibold text-foreground mb-0.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Repositories
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {orgEntries.length} organization{orgEntries.length !== 1 ? "s" : ""} · {repos.length} repositories · {selected} selected for analysis
+              </p>
+            </>
+          )}
         </div>
         {selected > 0 && (
           <button
@@ -445,7 +564,7 @@ function RepositoriesView({
         {["all", "github", "azuredevops", "gitlab", "bitbucket"].map(p => (
           <button
             key={p}
-            onClick={() => setFilterProvider(p)}
+            onClick={() => { setFilterProvider(p); setActiveOrg(null); }}
             className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
               filterProvider === p
                 ? "bg-primary/20 text-primary border border-primary/30"
@@ -472,15 +591,46 @@ function RepositoriesView({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map(r => <RepoCard key={r.id} repo={r} onToggle={toggle} />)}
-      </div>
+      {!inOrgView && (
+        <>
+          {orgEntries.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {orgEntries.map(([org, info]) => (
+                <OrgCard
+                  key={org}
+                  org={org}
+                  provider={info.provider}
+                  repoCount={info.repos.length}
+                  selectedCount={info.repos.filter(r => r.selected).length}
+                  onOpen={() => setActiveOrg(org)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 text-muted-foreground">
+              <Building2 size={28} className="mx-auto mb-3 opacity-25" />
+              <p className="text-sm">No organizations match your filters</p>
+              {connections.length === 0 && (
+                <p className="text-xs mt-1.5 opacity-70">Connect a repository source in Settings to get started</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
-      {filtered.length === 0 && (
-        <div className="text-center py-20 text-muted-foreground">
-          <GitBranch size={28} className="mx-auto mb-3 opacity-25" />
-          <p className="text-sm">No repositories match your filters</p>
-        </div>
+      {inOrgView && (
+        <>
+          {activeOrgRepos.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {activeOrgRepos.map(r => <RepoCard key={r.id} repo={r} onToggle={toggle} />)}
+            </div>
+          ) : (
+            <div className="text-center py-20 text-muted-foreground">
+              <GitBranch size={28} className="mx-auto mb-3 opacity-25" />
+              <p className="text-sm">No repositories in this organization match your filters</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -662,7 +812,10 @@ function SettingsDrawer({
 }) {
   const [tab, setTab] = useState("connections");
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
-  const [patValues, setPatValues] = useState<Record<string, string>>({});
+  const [addingType, setAddingType] = useState<ConnectionType | null>(null);
+  const [draft, setDraft] = useState<{ label: string; organization: string; baseUrl: string; token: string }>({
+    label: "", organization: "", baseUrl: "", token: "",
+  });
 
   const tabs = [
     { id: "connections", label: "Connections", icon: Globe },
@@ -671,8 +824,34 @@ function SettingsDrawer({
     { id: "apikeys", label: "API Keys", icon: Key },
   ];
 
+  const removeConnection = (id: string) =>
+    setConnections(connections.filter(c => c.id !== id));
+
   const toggleConnection = (id: string) =>
     setConnections(connections.map(c => c.id === id ? { ...c, connected: !c.connected } : c));
+
+  const startAdd = (type: ConnectionType) => {
+    setAddingType(type);
+    setDraft({ label: "", organization: "", baseUrl: "", token: "" });
+  };
+
+  const cancelAdd = () => setAddingType(null);
+
+  const saveAdd = () => {
+    if (!addingType || !draft.organization.trim() || !draft.token.trim()) return;
+    const meta = CONNECTION_TYPE_META[addingType];
+    const newConn: Connection = {
+      id: `conn-${addingType}-${Date.now()}`,
+      label: draft.label.trim() || draft.organization.trim(),
+      type: addingType,
+      organization: draft.organization.trim(),
+      baseUrl: meta.needsBaseUrl ? (draft.baseUrl.trim() || `https://dev.azure.com/${draft.organization.trim()}`) : undefined,
+      token: draft.token.trim(),
+      connected: true,
+    };
+    setConnections([...connections, newConn]);
+    setAddingType(null);
+  };
 
   const toggleAgent = (id: string) =>
     setAgents(agents.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a));
@@ -732,78 +911,166 @@ function SettingsDrawer({
                 <h3 className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   Repository Connections
                 </h3>
-                <p className="text-xs text-muted-foreground">Connect code hosting platforms to browse and analyze repositories</p>
+                <p className="text-xs text-muted-foreground">
+                  Connect one or more accounts per platform — each connection points to a different organization.
+                </p>
               </div>
-              {connections.map(conn => (
-                <div key={conn.id} className="rounded-xl border border-border/50 bg-card/40 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl border border-border/50 flex items-center justify-center bg-white/4">
-                        <ProviderIcon type={conn.type} size={16} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{conn.name}</p>
-                        {conn.connected && <p className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5"><CheckCircle size={10} /> Connected</p>}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => toggleConnection(conn.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        conn.connected
-                          ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
-                          : "bg-primary/15 text-primary border border-primary/25 hover:bg-primary/25"
-                      }`}
-                    >
-                      {conn.connected ? "Disconnect" : "Connect"}
-                    </button>
-                  </div>
 
-                  {!conn.connected && (
-                    <div className="pt-3 border-t border-border/30 space-y-2">
-                      {conn.type === "github" ? (
-                        <>
-                          <p className="text-xs text-muted-foreground mb-2">Authenticate via OAuth or Personal Access Token</p>
-                          <div className="flex gap-2">
-                            <button className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/8 text-foreground transition-colors">
-                              <Github size={13} /> OAuth with GitHub
-                            </button>
-                            <button className="px-3 py-2 rounded-lg text-xs text-muted-foreground border border-border/50 hover:text-foreground bg-white/3 transition-colors">
-                              Use PAT
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {conn.type === "azuredevops" && (
-                            <input
-                              type="text"
-                              placeholder="Organization URL (e.g. https://dev.azure.com/yourorg)"
-                              className="w-full text-xs rounded-lg px-3 py-2 border border-border/50 bg-white/4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
-                              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                            />
-                          )}
-                          <div className="relative">
-                            <input
-                              type={showKey[conn.id] ? "text" : "password"}
-                              placeholder="Personal Access Token (PAT)"
-                              value={patValues[conn.id] || ""}
-                              onChange={e => setPatValues(p => ({ ...p, [conn.id]: e.target.value }))}
-                              className="w-full text-xs rounded-lg px-3 py-2 pr-9 border border-border/50 bg-white/4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
-                              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                            />
-                            <button
-                              onClick={() => setShowKey(s => ({ ...s, [conn.id]: !s[conn.id] }))}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            >
-                              {showKey[conn.id] ? <EyeOff size={12} /> : <Eye size={12} />}
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+              {/* Add connection: type picker */}
+              <div className="rounded-xl border border-border/50 bg-card/30 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-foreground" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    Add a connection
+                  </p>
+                  {addingType && (
+                    <button onClick={cancelAdd} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
                   )}
                 </div>
-              ))}
+
+                {!addingType ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(Object.keys(CONNECTION_TYPE_META) as ConnectionType[]).map(type => {
+                      const meta = CONNECTION_TYPE_META[type];
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => startAdd(type)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/50 bg-white/3 hover:border-primary/40 hover:bg-primary/5 transition-colors text-left"
+                        >
+                          <div className="w-7 h-7 rounded-lg border border-white/8 flex items-center justify-center flex-shrink-0 bg-white/4">
+                            <ProviderIcon type={type} size={13} />
+                          </div>
+                          <span className="text-xs font-medium text-foreground">{meta.name}</span>
+                          <Plus size={11} className="ml-auto text-muted-foreground" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-primary/10 border border-primary/20 mb-2">
+                      <ProviderIcon type={addingType} size={13} />
+                      <span className="text-xs font-medium text-foreground">New {CONNECTION_TYPE_META[addingType].name} connection</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={draft.label}
+                      onChange={e => setDraft({ ...draft, label: e.target.value })}
+                      placeholder="Display name (e.g. Acme Corp Production)"
+                      className="w-full text-xs rounded-lg px-3 py-2 border border-border/50 bg-white/4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                    />
+                    <input
+                      type="text"
+                      value={draft.organization}
+                      onChange={e => setDraft({ ...draft, organization: e.target.value })}
+                      placeholder={`${CONNECTION_TYPE_META[addingType].orgLabel} name`}
+                      className="w-full text-xs rounded-lg px-3 py-2 border border-border/50 bg-white/4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                      style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                    />
+                    {CONNECTION_TYPE_META[addingType].needsBaseUrl && (
+                      <input
+                        type="text"
+                        value={draft.baseUrl}
+                        onChange={e => setDraft({ ...draft, baseUrl: e.target.value })}
+                        placeholder="Base URL (e.g. https://dev.azure.com/yourorg)"
+                        className="w-full text-xs rounded-lg px-3 py-2 border border-border/50 bg-white/4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                      />
+                    )}
+                    <div className="relative">
+                      <input
+                        type={showKey["__draft"] ? "text" : "password"}
+                        value={draft.token}
+                        onChange={e => setDraft({ ...draft, token: e.target.value })}
+                        placeholder="Personal Access Token (PAT)"
+                        className="w-full text-xs rounded-lg px-3 py-2 pr-9 border border-border/50 bg-white/4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                      />
+                      <button
+                        onClick={() => setShowKey(s => ({ ...s, __draft: !s.__draft }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showKey["__draft"] ? <EyeOff size={12} /> : <Eye size={12} />}
+                      </button>
+                    </div>
+                    {addingType === "github" && (
+                      <button className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border border-white/10 bg-white/5 hover:bg-white/8 text-foreground transition-colors">
+                        <Github size={13} /> Or authenticate with OAuth
+                      </button>
+                    )}
+                    <button
+                      onClick={saveAdd}
+                      disabled={!draft.organization.trim() || !draft.token.trim()}
+                      className="w-full py-2 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Save connection
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Existing connections grouped by type */}
+              {(Object.keys(CONNECTION_TYPE_META) as ConnectionType[])
+                .filter(type => connections.some(c => c.type === type))
+                .map(type => {
+                const list = connections.filter(c => c.type === type);
+                const meta = CONNECTION_TYPE_META[type];
+                return (
+                  <div key={type} className="space-y-2">
+                    <div className="flex items-center gap-2 pt-2 px-1">
+                      <ProviderIcon type={type} size={12} />
+                      <p className="text-xs font-semibold text-foreground" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                        {meta.name}
+                      </p>
+                      <span className="text-xs text-muted-foreground">· {list.length} connection{list.length !== 1 ? "s" : ""}</span>
+                    </div>
+                    {list.map(conn => (
+                      <div key={conn.id} className="rounded-xl border border-border/50 bg-card/40 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl border border-border/50 flex items-center justify-center bg-white/4 flex-shrink-0">
+                              <ProviderIcon type={conn.type} size={15} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{conn.label}</p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{conn.organization}</span>
+                                {conn.connected
+                                  ? <span className="flex items-center gap-1 text-emerald-400"><CheckCircle size={10} /> connected</span>
+                                  : <span className="flex items-center gap-1 text-amber-400"><AlertCircle size={10} /> disconnected</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button
+                              onClick={() => toggleConnection(conn.id)}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                conn.connected
+                                  ? "bg-white/5 text-muted-foreground border border-border/50 hover:text-foreground"
+                                  : "bg-primary/15 text-primary border border-primary/25 hover:bg-primary/25"
+                              }`}
+                            >
+                              {conn.connected ? "Disconnect" : "Reconnect"}
+                            </button>
+                            <button
+                              onClick={() => removeConnection(conn.id)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="Remove connection"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                        {conn.baseUrl && (
+                          <p className="text-xs text-muted-foreground mt-2.5 pt-2.5 border-t border-border/30 truncate" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                            {conn.baseUrl}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </>
           )}
 
@@ -1033,6 +1300,7 @@ export default function App() {
               setRepos={setRepos}
               searchQuery={searchQuery}
               onAnalyze={() => setActiveSection("analysis")}
+              connections={connections}
             />
           )}
           {activeSection === "analysis" && <AnalysisView selected={selectedRepos} />}
